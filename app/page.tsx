@@ -111,8 +111,8 @@ export default function VotingApp() {
     const existingVote = votes.find(vote => vote.voterName === selectedPlayer && vote.award === currentAward);
     if (existingVote) {
       alert(`You have already voted for ${currentAward}. You cannot vote for the same award twice.`);
-      return;
-    }
+    return;
+  }
     
     if (rankings.length !== availablePlayers.length) {
       alert(`Please rank all ${availablePlayers.length} available players before submitting your vote.`);
@@ -125,7 +125,7 @@ export default function VotingApp() {
     }
 
     // Submit the vote
-    db.transact(
+  db.transact(
       db.tx.votes[id()].update({
         voterName: selectedPlayer,
         award: currentAward,
@@ -230,7 +230,7 @@ export default function VotingApp() {
     Object.keys(feedbackState).forEach(player => {
       const playerFeedback = feedbackState[player];
       if (playerFeedback?.strength && playerFeedback?.improvement && playerFeedback?.growth) {
-        db.transact(
+  db.transact(
           db.tx.feedback[id()].update({
             voterName: selectedPlayer,
             targetPlayer: player,
@@ -330,7 +330,7 @@ export default function VotingApp() {
               const top3 = sortedPlayers.slice(0, 3);
               const otherPlayers = sortedPlayers.slice(3);
 
-              return (
+  return (
                 <div key={award} className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-xl">
                   <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                     {award}
@@ -385,7 +385,7 @@ export default function VotingApp() {
                     <div className="text-sm text-gray-500 mb-3">
                       {awardVotes.length} vote{awardVotes.length !== 1 ? 's' : ''}
                     </div>
-                    <button
+      <button
                       onClick={() => {
                         // Show detailed results modal
                         setDetailedAward(award);
@@ -559,13 +559,13 @@ export default function VotingApp() {
             </div>
           </div>
         )}
-      </div>
-    );
-  }
+    </div>
+  );
+}
 
   // If showing feedback, display only the feedback interface
   if (showFeedback) {
-    return (
+  return (
       <div className="min-h-screen bg-black text-white p-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
@@ -877,8 +877,8 @@ export default function VotingApp() {
               >
                 {player}
               </button>
-            ))}
-          </div>
+      ))}
+    </div>
         </div>
       )}
 
@@ -940,7 +940,7 @@ export default function VotingApp() {
               const hasVotedForAward = votes.some((vote: Vote) => 
                 vote.voterName === selectedPlayer && vote.award === award
               );
-              return (
+  return (
                 <button
                   key={award}
                   onClick={() => setCurrentAward(award)}
@@ -1146,7 +1146,7 @@ export default function VotingApp() {
       {/* Reset Button */}
       {selectedPlayer && (
         <div className="text-center mt-8">
-          <button
+      <button
             onClick={() => {
               setSelectedPlayer("");
               setCurrentAward(null);
@@ -1165,7 +1165,7 @@ export default function VotingApp() {
             className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             🔄 Reset & Choose Different Player
-          </button>
+      </button>
         </div>
       )}
     </div>

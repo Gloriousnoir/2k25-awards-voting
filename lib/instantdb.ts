@@ -13,7 +13,7 @@ export const PLAYERS = [
 
 export type Player = typeof PLAYERS[number];
 
-// Award categories
+// Award categories - using string literals directly
 export const AWARDS = {
   MVP: "MVP",
   DEFENSE_PLAYER: "Defense Player",
@@ -50,39 +50,39 @@ export const AWARDS = {
 
 export type Award = typeof AWARDS[keyof typeof AWARDS];
 
-// Position restrictions
-export const POSITION_RESTRICTIONS: { [key in Award]: Player[] } = {
-  [AWARDS.MVP]: [],
-  [AWARDS.DEFENSE_PLAYER]: [],
-  [AWARDS.BEST_SHOOTER]: [],
-  [AWARDS.SIXTH_MAN]: ["Wes", "Dope", "G"],
-  [AWARDS.ROOKIE_OF_THE_YEAR]: ["Wes", "Dope", "G"],
-  [AWARDS.BEST_TEAMMATE]: [],
-  [AWARDS.BEST_FORWARD]: ["Mandell", "Dope", "Justin"],
-  [AWARDS.BEST_GUARD]: ["Will", "Mark", "Dope"],
-  [AWARDS.BEST_CENTER]: ["Will", "Mandell", "Kehlel", "G", "Justin"],
-  [AWARDS.BEST_DUNKER]: [],
-  [AWARDS.BEST_PASSER]: [],
-  [AWARDS.BEST_STEALER]: [],
-  [AWARDS.BEST_BLOCKER]: [],
-  [AWARDS.BEST_SCORER]: [],
-  [AWARDS.BEST_DEFENDER]: [],
-  [AWARDS.OFFENSIVE_PLAYER]: [],
-  [AWARDS.BEST_IQ]: [],
-  [AWARDS.BEST_DECISION_MAKER]: [],
-  [AWARDS.FAVORITE_PLAYER]: [],
-  [AWARDS.WORST_DECISION_MAKER]: [],
-  [AWARDS.WORST_SHOT_TAKER]: [],
-  [AWARDS.WORST_IQ]: [],
-  [AWARDS.WORST_TEAMMATE]: [],
-  [AWARDS.WORST_PASSER]: [],
-  [AWARDS.WORST_SHOOTER]: [],
-  [AWARDS.WORST_STEALER]: [],
-  [AWARDS.WORST_BLOCKER]: [],
-  [AWARDS.WORST_DEFENDER]: [],
-  [AWARDS.MOST_IMPROVED]: [],
-  [AWARDS.MOST_LIKELY_TO_SUCCEED]: [],
-  [AWARDS.SHAQTIN_A_FOOL]: []
+// Position restrictions - using the same string literals
+export const POSITION_RESTRICTIONS: Record<string, Player[]> = {
+  "MVP": [],
+  "Defense Player": [],
+  "Best Shooter": [],
+  "Sixth Man": ["Wes", "Dope", "G"],
+  "Rookie of the Year": ["Wes", "Dope", "G"],
+  "Best Teammate": [],
+  "Best Forward": ["Mandell", "Dope", "Justin"],
+  "Best Guard": ["Will", "Mark", "Dope"],
+  "Best Center": ["Will", "Mandell", "Kehlel", "G", "Justin"],
+  "Best Dunker": [],
+  "Best Passer": [],
+  "Best Stealer": [],
+  "Best Blocker": [],
+  "Best Scorer": [],
+  "Best Defender": [],
+  "Offensive Player": [],
+  "Best IQ": [],
+  "Best Decision Maker": [],
+  "Favorite Player to Play With": [],
+  "Worst Decision Maker": [],
+  "Worst Shot Taker": [],
+  "Worst IQ": [],
+  "Worst Teammate": [],
+  "Worst Passer": [],
+  "Worst Shooter": [],
+  "Worst Stealer": [],
+  "Worst Blocker": [],
+  "Worst Defender": [],
+  "Most Improved": [],
+  "Most Likely to Succeed Following 2K": [],
+  "Shaqtin a Fool of the Year": []
 };
 
 // Schema definition
