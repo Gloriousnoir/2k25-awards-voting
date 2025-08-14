@@ -55,8 +55,8 @@ export const POSITION_RESTRICTIONS: Record<string, Player[]> = {
   "MVP": [],
   "Defense Player": [],
   "Best Shooter": [],
-  "Sixth Man": ["Wes", "Dope", "G"],
-  "Rookie of the Year": ["Wes", "Dope", "G"],
+  "Sixth Man": ["Wes", "G", "Dope"],
+  "Rookie of the Year": ["Wes", "G", "Dope"],
   "Best Teammate": [],
   "Best Forward": ["Mandell", "Dope", "Justin"],
   "Best Guard": ["Will", "Mark", "Dope"],
@@ -136,7 +136,8 @@ export function getAvailablePlayers(award: Award, excludePlayer?: Player): Playe
   // Apply position restrictions
   const restrictions = POSITION_RESTRICTIONS[award];
   if (restrictions && restrictions.length > 0) {
-    available = available.filter(player => !restrictions.includes(player));
+    // For awards with position restrictions, only show the restricted players
+    available = restrictions;
   }
 
   // Exclude self
