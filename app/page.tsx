@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { db, room, PLAYERS, AWARDS, getAvailablePlayers, calculateBordaCount, rankingsToString, PREPOPULATED_FEEDBACK, type Vote, type Award, type Feedback } from "../lib/instantdb";
+import { db, room, PLAYERS, AWARDS, getAvailablePlayers, calculateBordaCount, rankingsToString, stringToRankings, PREPOPULATED_FEEDBACK, type Vote, type Award, type Feedback } from "../lib/instantdb";
 import { id } from "@instantdb/react";
 import AdminPanel from "../components/AdminPanel";
 
@@ -49,6 +49,10 @@ export default function VotingApp() {
   // Get available players for current award (excluding the voter)
   const availablePlayers = currentAward ? getAvailablePlayers(currentAward, selectedPlayer as any) : [];
 
+  // Check if current award has already been voted for
+  const hasVotedForCurrentAward = currentAward ? 
+    votes.some((vote: Vote) => vote.voterName === selectedPlayer && vote.award === currentAward) : false;
+
   // Check browser voting restrictions on component mount
   useEffect(() => {
     const storedVoter = localStorage.getItem('2k25_awards_voter');
@@ -87,11 +91,26 @@ export default function VotingApp() {
       return;
     }
     
+    // Find the next unvoted award to resume from
+    const votedAwards = new Set(playerUniqueAwards);
+    const nextAward = Object.values(AWARDS).find(award => !votedAwards.has(award)) || AWARDS.MVP;
+    
     // Set the selected player and go to voting page
     setSelectedPlayer(player);
     setCurrentPage('voting');
-    setCurrentAward(AWARDS.MVP); // Start with MVP
-    setRankings([]);
+    setCurrentAward(nextAward); // Resume from next unvoted award
+    
+    // Load existing rankings if this award has already been voted for
+    const existingVote = votes.find((vote: Vote) => 
+      vote.voterName === player && vote.award === nextAward
+    );
+    
+    if (existingVote) {
+      setRankings(stringToRankings(existingVote.rankings));
+    } else {
+      setRankings([]);
+    }
+    
     setShowDetailedModal(false);
     setDetailedAward(null);
   };
@@ -165,7 +184,19 @@ export default function VotingApp() {
     if (currentIndex > 0) {
       const previousAward = Object.values(AWARDS)[currentIndex - 1];
       setCurrentAward(previousAward);
-      setRankings([]);
+      
+      // Load previous rankings if they exist
+      const previousVote = votes.find((vote: Vote) => 
+        vote.voterName === selectedPlayer && vote.award === previousAward
+      );
+      
+      if (previousVote) {
+        // Convert string back to array for display
+        const previousRankings = stringToRankings(previousVote.rankings);
+        setRankings(previousRankings);
+      } else {
+        setRankings([]);
+      }
     }
   };
 
@@ -177,7 +208,19 @@ export default function VotingApp() {
     if (currentIndex < Object.values(AWARDS).length - 1) {
       const nextAward = Object.values(AWARDS)[currentIndex + 1];
       setCurrentAward(nextAward);
-      setRankings([]);
+      
+      // Load next award rankings if they exist
+      const nextVote = votes.find((vote: Vote) => 
+        vote.voterName === selectedPlayer && vote.award === nextAward
+      );
+      
+      if (nextVote) {
+        // Convert string back to array for display
+        const nextRankings = stringToRankings(nextVote.rankings);
+        setRankings(nextRankings);
+      } else {
+        setRankings([]);
+      }
     }
   };
 
@@ -528,6 +571,18 @@ export default function VotingApp() {
                 <div className="text-sm text-gray-500">
                   <strong>Note:</strong> You cannot vote for yourself ({selectedPlayer})
                 </div>
+                
+                {/* Already Voted Warning */}
+                {hasVotedForCurrentAward && (
+                  <div className="mt-4 p-3 bg-green-50/80 backdrop-blur-sm border border-green-200/50 rounded-xl">
+                    <div className="flex items-center justify-center space-x-2 text-green-700">
+                      <span className="text-lg">✅</span>
+                      <span className="text-sm font-medium">
+                        You have already voted for this award! You can review your rankings below.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Navigation Buttons */}
@@ -618,12 +673,14 @@ export default function VotingApp() {
               <div className="text-center mt-8">
                 <button
                   onClick={submitVote}
-                  disabled={rankings.length !== availablePlayers.length}
+                  disabled={rankings.length !== availablePlayers.length || hasVotedForCurrentAward}
                   className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-medium py-4 px-8 rounded-xl transition-all duration-200 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:hover:from-gray-300 disabled:hover:to-gray-400"
                 >
-                  {rankings.length === availablePlayers.length
-                    ? "Submit Vote"
-                    : `Rank ${availablePlayers.length - rankings.length} more player${availablePlayers.length - rankings.length !== 1 ? 's' : ''}`
+                  {hasVotedForCurrentAward 
+                    ? "Already Voted ✓"
+                    : rankings.length === availablePlayers.length
+                      ? "Submit Vote"
+                      : `Rank ${availablePlayers.length - rankings.length} more player${availablePlayers.length - rankings.length !== 1 ? 's' : ''}`
                   }
                 </button>
               </div>
@@ -895,7 +952,7 @@ export default function VotingApp() {
                     <tbody>
                       {votes.filter((vote: Vote) => vote.award === detailedAward)
                         .reduce((acc: any[], vote: Vote) => {
-                          const rankings = vote.rankings.split(',').map(p => p.trim());
+                          const rankings = stringToRankings(vote.rankings);
                           rankings.forEach((player, index) => {
                             const existing = acc.find(p => p.player === player);
                             if (existing) {
@@ -941,7 +998,7 @@ export default function VotingApp() {
                 <h3 className="text-xl font-semibold mb-4 text-gray-800">Individual Votes</h3>
                 <div className="space-y-3">
                   {votes.filter((vote: Vote) => vote.award === detailedAward).map((vote: Vote, index) => {
-                    const rankings = vote.rankings.split(',').map(p => p.trim());
+                    const rankings = stringToRankings(vote.rankings);
                     return (
                       <div key={index} className="bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-white/30 shadow-md">
                         <div className="flex items-center justify-between mb-3">
