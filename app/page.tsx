@@ -549,26 +549,26 @@ export default function VotingApp() {
               </div>
 
               {/* Voting Interface */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="flex gap-2 min-w-0 overflow-hidden">
                 {/* Available Players */}
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-gray-900">Available Players</h3>
-                  <div className="space-y-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-900">Available Players</h3>
+                  <div className="space-y-2">
                     {availablePlayers.map((player) => (
                       <button
                         key={player}
                         onClick={() => handleRankingChange(player, rankings.length)}
                         disabled={rankings.includes(player)}
-                        className={`w-full p-4 rounded-xl text-left transition-all duration-200 ${
+                        className={`w-full p-2 rounded-lg text-left transition-all duration-200 ${
                           rankings.includes(player)
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'bg-white/60 backdrop-blur-sm hover:bg-white/80 border border-white/30 shadow-md hover:shadow-lg transform hover:-translate-y-1'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-900">{player}</span>
+                        <div className="flex items-center justify-between min-w-0">
+                          <span className="font-medium text-gray-900 truncate text-sm">{player}</span>
                           {rankings.includes(player) && (
-                            <span className="text-purple-600 font-bold">
+                            <span className="text-purple-600 font-bold text-xs flex-shrink-0 ml-1">
                               #{rankings.indexOf(player) + 1}
                             </span>
                           )}
@@ -579,30 +579,30 @@ export default function VotingApp() {
                 </div>
 
                 {/* Your Rankings */}
-                <div>
-                  <h3 className="text-xl font-semibold mb-4 text-gray-900">Your Rankings</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-900">Your Rankings</h3>
                   {rankings.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-6 text-gray-500 text-xs">
                       Click on players to rank them
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {rankings.map((player, index) => (
                         <div
                           key={player}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-xl shadow-lg"
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2 rounded-lg shadow-lg"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <span className="text-2xl font-bold">{index + 1}</span>
-                              <span className="font-medium">{player}</span>
+                          <div className="flex items-center justify-between min-w-0">
+                            <div className="flex items-center space-x-1 min-w-0">
+                              <span className="text-sm font-bold flex-shrink-0">{index + 1}</span>
+                              <span className="font-medium truncate text-sm">{player}</span>
                             </div>
                             <button
                               onClick={() => {
                                 const newRankings = rankings.filter((_, i) => i !== index);
                                 setRankings(newRankings);
                               }}
-                              className="text-white/80 hover:text-white text-2xl transition-colors"
+                              className="text-white/80 hover:text-white text-lg transition-colors flex-shrink-0 ml-1"
                             >
                               ×
                             </button>
