@@ -51,12 +51,38 @@ export const AWARDS = {
 export type Award = typeof AWARDS[keyof typeof AWARDS];
 
 // Position restrictions
-export const POSITION_RESTRICTIONS = {
+export const POSITION_RESTRICTIONS: Record<Award, Player[]> = {
+  [AWARDS.MVP]: [],
+  [AWARDS.DEFENSE_PLAYER]: [],
+  [AWARDS.BEST_SHOOTER]: [],
+  [AWARDS.SIXTH_MAN]: ["Wes", "Dope", "G"],
+  [AWARDS.ROOKIE_OF_THE_YEAR]: ["Wes", "Dope", "G"],
+  [AWARDS.BEST_TEAMMATE]: [],
   [AWARDS.BEST_FORWARD]: ["Mandell", "Dope", "Justin"],
   [AWARDS.BEST_GUARD]: ["Will", "Mark", "Dope"],
   [AWARDS.BEST_CENTER]: ["Will", "Mandell", "Kehlel", "G", "Justin"],
-  [AWARDS.SIXTH_MAN]: ["Wes", "Dope", "G"],
-  [AWARDS.ROOKIE_OF_THE_YEAR]: ["Wes", "Dope", "G"]
+  [AWARDS.BEST_DUNKER]: [],
+  [AWARDS.BEST_PASSER]: [],
+  [AWARDS.BEST_STEALER]: [],
+  [AWARDS.BEST_BLOCKER]: [],
+  [AWARDS.BEST_SCORER]: [],
+  [AWARDS.BEST_DEFENDER]: [],
+  [AWARDS.OFFENSIVE_PLAYER]: [],
+  [AWARDS.BEST_IQ]: [],
+  [AWARDS.BEST_DECISION_MAKER]: [],
+  [AWARDS.FAVORITE_PLAYER]: [],
+  [AWARDS.WORST_DECISION_MAKER]: [],
+  [AWARDS.WORST_SHOT_TAKER]: [],
+  [AWARDS.WORST_IQ]: [],
+  [AWARDS.WORST_TEAMMATE]: [],
+  [AWARDS.WORST_PASSER]: [],
+  [AWARDS.WORST_SHOOTER]: [],
+  [AWARDS.WORST_STEALER]: [],
+  [AWARDS.WORST_BLOCKER]: [],
+  [AWARDS.WORST_DEFENDER]: [],
+  [AWARDS.MOST_IMPROVED]: [],
+  [AWARDS.MOST_LIKELY_TO_SUCCEED]: [],
+  [AWARDS.SHAQTIN_A_FOOL]: []
 } as const;
 
 // Schema definition
@@ -108,8 +134,9 @@ export function getAvailablePlayers(award: Award, excludePlayer?: Player): Playe
   let available = [...PLAYERS];
 
   // Apply position restrictions
-  if (POSITION_RESTRICTIONS[award]) {
-    available = available.filter(player => !POSITION_RESTRICTIONS[award].includes(player));
+  const restrictions = POSITION_RESTRICTIONS[award];
+  if (restrictions && restrictions.length > 0) {
+    available = available.filter(player => !restrictions.includes(player));
   }
 
   // Exclude self
