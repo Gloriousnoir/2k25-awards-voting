@@ -51,7 +51,7 @@ export const AWARDS = {
 export type Award = typeof AWARDS[keyof typeof AWARDS];
 
 // Position restrictions
-export const POSITION_RESTRICTIONS: Record<Award, Player[]> = {
+export const POSITION_RESTRICTIONS: { [key in Award]: Player[] } = {
   [AWARDS.MVP]: [],
   [AWARDS.DEFENSE_PLAYER]: [],
   [AWARDS.BEST_SHOOTER]: [],
@@ -83,7 +83,7 @@ export const POSITION_RESTRICTIONS: Record<Award, Player[]> = {
   [AWARDS.MOST_IMPROVED]: [],
   [AWARDS.MOST_LIKELY_TO_SUCCEED]: [],
   [AWARDS.SHAQTIN_A_FOOL]: []
-} as const;
+};
 
 // Schema definition
 export const schema = i.schema({
