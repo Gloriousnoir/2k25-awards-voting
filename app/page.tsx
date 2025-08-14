@@ -792,7 +792,7 @@ export default function VotingApp() {
               const top3 = sortedPlayers.slice(0, 3);
               const otherPlayers = sortedPlayers.slice(3);
 
-  return (
+              return (
                 <div key={award} className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-xl">
                   <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                     {award}
@@ -842,12 +842,35 @@ export default function VotingApp() {
                     </div>
                   </div>
 
+                  {/* All Players Results */}
+                  <div className="mb-4">
+                    <h4 className="text-lg font-semibold mb-3 text-gray-800 text-center">All Results</h4>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {sortedPlayers.map(([player, score], index) => (
+                        <div key={player} className="flex justify-between items-center p-2 bg-white/60 backdrop-blur-sm rounded-lg border border-white/30">
+                          <div className="flex items-center space-x-2">
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                              index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' :
+                              index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white' :
+                              index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white' :
+                              'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-700'
+                            }`}>
+                              {index + 1}
+                            </span>
+                            <span className="font-medium text-gray-800">{player}</span>
+                          </div>
+                          <span className="text-blue-600 font-semibold">{score} pts</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Vote Count and Details Button */}
                   <div className="text-center">
                     <div className="text-sm text-gray-500 mb-3">
                       {awardVotes.length} vote{awardVotes.length !== 1 ? 's' : ''}
                     </div>
-      <button
+                    <button
                       onClick={() => {
                         // Show detailed results modal
                         setDetailedAward(award);
@@ -1056,13 +1079,13 @@ export default function VotingApp() {
           </div>
 
           {/* Feedback Dashboard */}
-          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-8">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mb-8 shadow-xl">
             {/* Feedback Progress */}
             <div className="text-center mb-6">
-              <div className="text-lg text-gray-300 mb-3">
+              <div className="text-lg text-gray-700 mb-3">
                 Feedback Progress: {feedback.filter(f => f.voterName === selectedPlayer).length} of {PLAYERS.filter(p => p !== selectedPlayer).length} teammates
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-3">
+              <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
                   className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
                   style={{
@@ -1079,25 +1102,25 @@ export default function VotingApp() {
                 const hasFeedback = !!existingFeedback;
 
                 return (
-                  <div key={player} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <div key={player} className="bg-white/60 backdrop-blur-sm border border-white/30 rounded-xl p-4 shadow-md">
                     <div className="text-center mb-4">
-                      <h4 className="text-lg font-semibold text-white mb-2">{player}</h4>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">{player}</h4>
                       {hasFeedback ? (
-                        <span className="text-green-400 text-sm">✓ Feedback Given</span>
+                        <span className="text-green-600 text-sm">✓ Feedback Given</span>
                       ) : (
-                        <span className="text-gray-400 text-sm">No feedback yet</span>
+                        <span className="text-gray-500 text-sm">No feedback yet</span>
                       )}
                     </div>
 
                     {!hasFeedback && (
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-green-400">
+                          <label className="block text-sm font-medium mb-1 text-green-600">
                             💪 Strength:
                           </label>
                           <textarea
                             placeholder="What they do well..."
-                            className="w-full p-2 bg-black border border-gray-700 rounded text-white text-sm focus:border-green-500 focus:outline-none transition-colors"
+                            className="w-full p-2 bg-white/80 border border-gray-200 rounded-lg text-gray-900 text-sm focus:border-green-500 focus:outline-none transition-colors"
                             rows={2}
                             onChange={(e) => {
                               const newFeedback = { ...feedbackState[player], strength: e.target.value };
@@ -1108,15 +1131,18 @@ export default function VotingApp() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-yellow-400">
+                          <label className="block text-sm font-medium mb-1 text-yellow-600">
                             🔧 Improvement:
                           </label>
                           <textarea
                             placeholder="Areas to work on..."
-                            className="w-full p-2 bg-black border border-gray-700 rounded text-white text-sm focus:border-yellow-500 focus:outline-none transition-colors"
+                            className="w-full p-2 bg-white/80 border border-gray-200 rounded-lg text-gray-900 text-sm focus:border-yellow-500 focus:outline-none transition-colors"
                             rows={2}
                             onChange={(e) => {
-                              const newFeedback = { ...feedbackState[player], improvement: e.target.value };
+                              const newFeedback = { 
+                                ...feedbackState[player], 
+                                improvement: e.target.value 
+                              };
                               setFeedbackState({ ...feedbackState, [player]: newFeedback });
                             }}
                             value={feedbackState[player]?.improvement || ""}
@@ -1124,15 +1150,18 @@ export default function VotingApp() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-1 text-blue-400">
+                          <label className="block text-sm font-medium mb-1 text-blue-600">
                             🌱 Growth:
                           </label>
                           <textarea
                             placeholder="Development suggestions..."
-                            className="w-full p-2 bg-black border border-gray-700 rounded text-white text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                            className="w-full p-2 bg-white/80 border border-gray-200 rounded-lg text-gray-900 text-sm focus:border-blue-500 focus:outline-none transition-colors"
                             rows={2}
                             onChange={(e) => {
-                              const newFeedback = { ...feedbackState[player], growth: e.target.value };
+                              const newFeedback = { 
+                                ...feedbackState[player], 
+                                growth: e.target.value 
+                              };
                               setFeedbackState({ ...feedbackState, [player]: newFeedback });
                             }}
                             value={feedbackState[player]?.growth || ""}
@@ -1143,13 +1172,13 @@ export default function VotingApp() {
                           <button
                             onClick={() => submitFeedbackForPlayer(player)}
                             disabled={!feedbackState[player]?.strength || !feedbackState[player]?.improvement || !feedbackState[player]?.growth}
-                            className="flex-1 bg-green-600 text-white text-sm font-medium py-2 px-3 rounded transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
+                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 hover:from-green-600 hover:to-emerald-600 shadow-md disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:hover:from-gray-300 disabled:hover:to-gray-400"
                           >
                             Submit
                           </button>
                           <button
                             onClick={() => skipFeedbackForPlayer(player)}
-                            className="bg-gray-600 text-white text-sm font-medium py-2 px-3 rounded transition-all duration-200 hover:bg-gray-700 active:scale-95"
+                            className="bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 hover:from-gray-600 hover:to-gray-700 shadow-md"
                           >
                             Skip
                           </button>
@@ -1159,27 +1188,27 @@ export default function VotingApp() {
 
                     {hasFeedback && (
                       <div className="space-y-2">
-                        <div className="text-xs text-gray-400">
-                          <div className="font-medium text-green-400 mb-1">💪 Strength:</div>
-                          <div className="text-white">{existingFeedback.strength}</div>
+                        <div className="text-xs text-gray-600">
+                          <div className="font-medium text-green-600 mb-1">💪 Strength:</div>
+                          <div className="text-gray-800">{existingFeedback.strength}</div>
                         </div>
-                        <div className="text-xs text-gray-400">
-                          <div className="font-medium text-yellow-400 mb-1">🔧 Improvement:</div>
-                          <div className="text-white">{existingFeedback.improvement}</div>
+                        <div className="text-xs text-gray-600">
+                          <div className="font-medium text-yellow-600 mb-1">🔧 Improvement:</div>
+                          <div className="text-gray-800">{existingFeedback.improvement}</div>
                         </div>
-                        <div className="text-xs text-gray-400">
-                          <div className="font-medium text-blue-400 mb-1">🌱 Growth:</div>
-                          <div className="text-white">{existingFeedback.growth}</div>
+                        <div className="text-xs text-gray-600">
+                          <div className="font-medium text-blue-600 mb-1">🌱 Growth:</div>
+                          <div className="text-gray-800">{existingFeedback.growth}</div>
                         </div>
                         <button
                           onClick={() => editFeedbackForPlayer(player)}
-                          className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded transition-all duration-200 hover:bg-blue-700 active:scale-95 mt-3"
+                          className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 hover:from-blue-600 hover:to-indigo-600 shadow-md mt-3"
                         >
                           Edit Feedback
                         </button>
                       </div>
-            )}
-          </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1189,16 +1218,16 @@ export default function VotingApp() {
               <button
                 onClick={submitAllFeedback}
                 disabled={Object.keys(feedbackState).length === 0}
-                className="bg-green-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
+                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:from-green-600 hover:to-emerald-600 shadow-lg disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:hover:from-gray-300 disabled:hover:to-gray-400"
               >
                 📝 Submit All Feedback
               </button>
-          <button
+              <button
                 onClick={skipAllFeedback}
-                className="bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-gray-700 active:scale-95"
-          >
+                className="bg-gradient-to-r from-gray-500 to-gray-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:from-gray-600 hover:to-gray-700 shadow-lg"
+              >
                 ⏭️ Skip All Feedback
-          </button>
+              </button>
             </div>
           </div>
         </div>
