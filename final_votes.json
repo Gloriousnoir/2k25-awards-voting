@@ -1,0 +1,62 @@
+[
+  {
+    "voterName": "Cam",
+    "award": "MVP",
+    "rankings": [
+      "Will",
+      "Mark",
+      "Cam",
+      "Kehlel",
+      "Mandell",
+      "Ray",
+      "Dope",
+      "G"
+    ],
+    "timestamp": 1703123456789
+  },
+  {
+    "voterName": "Cam",
+    "award": "Defense Player",
+    "rankings": [
+      "Cam",
+      "Will",
+      "Kehlel",
+      "Mark",
+      "Ray",
+      "Dope",
+      "G",
+      "Justin"
+    ],
+    "timestamp": 1703123456789
+  },
+  {
+    "voterName": "Dope",
+    "award": "MVP",
+    "rankings": [
+      "Cam",
+      "Will",
+      "Mark",
+      "Kehlel",
+      "Ray",
+      "Dope",
+      "G",
+      "Justin"
+    ],
+    "timestamp": 1703123456790
+  },
+  {
+    "voterName": "Dope",
+    "award": "Best Teammate",
+    "rankings": [
+      "Mark",
+      "Cam",
+      "Will",
+      "Ray",
+      "Dope",
+      "G",
+      "Justin",
+      "Kehlel"
+    ],
+    "timestamp": 1703123456790
+  }
+]

@@ -1,0 +1,67 @@
+[
+  {
+    "voterName": "Cam",
+    "award": "MVP",
+    "rankings": ["Mark", "Ray", "Will", "Kehlel", "Mandell"]
+  },
+  {
+    "voterName": "Cam",
+    "award": "Best Shooter",
+    "rankings": ["Justin", "G", "Mark", "Ray", "Will"]
+  },
+  {
+    "voterName": "Cam",
+    "award": "Best Forward",
+    "rankings": ["Mark", "Ray", "Will", "Kehlel"]
+  },
+  {
+    "voterName": "Dope",
+    "award": "MVP",
+    "rankings": ["Mark", "Cam", "Ray", "Will", "Kehlel"]
+  },
+  {
+    "voterName": "Dope",
+    "award": "Best Shooter",
+    "rankings": ["Justin", "G", "Mark", "Ray", "Will"]
+  },
+  {
+    "voterName": "G",
+    "award": "MVP",
+    "rankings": ["Mark", "Cam", "Ray", "Will", "Kehlel"]
+  },
+  {
+    "voterName": "Justin",
+    "award": "Best Center",
+    "rankings": ["Mark", "Ray", "Will", "Kehlel"]
+  },
+  {
+    "voterName": "Kehlel",
+    "award": "Best Center",
+    "rankings": ["Mark", "Ray", "Will", "Mandell"]
+  },
+  {
+    "voterName": "Mandell",
+    "award": "Best Forward",
+    "rankings": ["Mark", "Ray", "Will", "Kehlel"]
+  },
+  {
+    "voterName": "Mark",
+    "award": "MVP",
+    "rankings": ["Cam", "Ray", "Will", "Kehlel", "Mandell"]
+  },
+  {
+    "voterName": "Ray",
+    "award": "Best Guard",
+    "rankings": ["Mark", "Cam", "Will", "Kehlel"]
+  },
+  {
+    "voterName": "Wes",
+    "award": "Sixth Man",
+    "rankings": ["Dope", "G"]
+  },
+  {
+    "voterName": "Will",
+    "award": "Best Center",
+    "rankings": ["Mark", "Ray", "Kehlel", "Mandell"]
+  }
+]

@@ -1,103 +1,1173 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import { useState, useEffect } from "react";
+import { db, room, PLAYERS, AWARDS, getAvailablePlayers, calculateBordaCount, rankingsToString, PREPOPULATED_FEEDBACK, type Vote, type Award, type Feedback } from "../lib/instantdb";
+import { id } from "@instantdb/react";
+import AdminPanel from "../components/AdminPanel";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function VotingApp() {
+  const [selectedPlayer, setSelectedPlayer] = useState<string>("");
+  const [currentAward, setCurrentAward] = useState<Award | null>(null);
+  const [rankings, setRankings] = useState<string[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  // Feedback state for multiple players
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackState, setFeedbackState] = useState<{[key: string]: {strength: string, improvement: string, growth: string}}>({});
+
+  // Detailed results modal state
+  const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [detailedAward, setDetailedAward] = useState<Award | null>(null);
+
+  // Browser voting restriction state
+  const [browserVoter, setBrowserVoter] = useState<string | null>(null);
+  const [hasVotedInBrowser, setHasVotedInBrowser] = useState(false);
+
+  const { data: votesData } = db.useQuery({ votes: {} });
+  const { data: feedbackData } = db.useQuery({ feedback: {} });
+  const { peers } = room.usePresence();
+
+  const votes = votesData?.votes || [];
+  const feedback = feedbackData?.feedback || [];
+  const numUsers = Object.keys(peers).length;
+
+  // Calculate voting progress
+  const userVotes = votes.filter((vote: Vote) => vote.voterName === selectedPlayer);
+  const uniqueAwardsVoted = [...new Set(userVotes.map(vote => vote.award))];
+  const votingProgress = uniqueAwardsVoted.length;
+  const totalAwards = Object.keys(AWARDS).length;
+  const isVotingComplete = votingProgress >= totalAwards;
+
+  // Check if user has voted (for existing logic)
+  const hasVoted = votes.some((vote: Vote) => vote.voterName === selectedPlayer);
+  
+  // Get available players for current award
+  const availablePlayers = currentAward ? getAvailablePlayers(currentAward, selectedPlayer as any) : [];
+
+  // Check browser voting restrictions on component mount
+  useEffect(() => {
+    const storedVoter = localStorage.getItem('2k25_awards_voter');
+    const storedVoteStatus = localStorage.getItem('2k25_awards_voted');
+    
+    if (storedVoter && storedVoteStatus === 'true') {
+      setBrowserVoter(storedVoter);
+      setHasVotedInBrowser(true);
+      setSelectedPlayer(storedVoter);
+      setShowResults(true);
+    }
+  }, []);
+
+  const handlePlayerSelect = (player: string) => {
+    // Check if this browser has already voted for someone else
+    if (browserVoter && browserVoter !== player) {
+      alert(`This browser has already been used to vote for ${browserVoter}. You cannot vote for a different player.`);
+      return;
+    }
+
+    // Check if this player has already been voted for in this browser
+    if (hasVotedInBrowser && browserVoter === player) {
+      // Allow viewing results for the same player
+      setSelectedPlayer(player);
+      setShowResults(true);
+      return;
+    }
+
+    // Check if user has already completed all awards
+    const playerVotes = votes.filter((vote: Vote) => vote.voterName === player);
+    const playerUniqueAwards = [...new Set(playerVotes.map(vote => vote.award))];
+    if (playerUniqueAwards.length >= totalAwards) {
+      // User has completed everything, show results directly
+      setSelectedPlayer(player);
+      setShowResults(true);
+      return;
+    }
+    
+    setCurrentAward(AWARDS.MVP); // Automatically select MVP as the first award
+    setRankings([]);
+    setShowResults(false);
+    setShowFeedback(false);
+    setFeedbackState({}); // Clear feedback state on player change
+    setShowDetailedModal(false); // Clear detailed modal
+    setDetailedAward(null); // Clear detailed award
+  };
+
+  // Handle ranking changes
+  const handleRankingChange = (player: string, position: number) => {
+    if (rankings.includes(player)) return;
+    
+    const newRankings = [...rankings];
+    newRankings.splice(position, 0, player);
+    setRankings(newRankings);
+  };
+
+  const submitVote = () => {
+    if (!currentAward || !selectedPlayer) return;
+    
+    // Check if user has already voted for this award
+    const existingVote = votes.find(vote => vote.voterName === selectedPlayer && vote.award === currentAward);
+    if (existingVote) {
+      alert(`You have already voted for ${currentAward}. You cannot vote for the same award twice.`);
+      return;
+    }
+    
+    if (rankings.length !== availablePlayers.length) {
+      alert(`Please rank all ${availablePlayers.length} available players before submitting your vote.`);
+      return;
+    }
+    const uniqueRankings = [...new Set(rankings)];
+    if (uniqueRankings.length !== rankings.length) {
+      alert("You have duplicate players in your rankings. Please fix this before submitting.");
+      return;
+    }
+
+    // Submit the vote
+    db.transact(
+      db.tx.votes[id()].update({
+        voterName: selectedPlayer,
+        award: currentAward,
+        rankings: rankingsToString(rankings),
+        timestamp: Date.now(),
+      })
+    );
+
+    // Set browser voting restrictions
+    localStorage.setItem('2k25_awards_voter', selectedPlayer);
+    localStorage.setItem('2k25_awards_voted', 'true');
+    setBrowserVoter(selectedPlayer);
+    setHasVotedInBrowser(true);
+
+    // Auto-advance to next award or show feedback
+    // Don't include currentAward in the count since it's being submitted now
+    const remainingAwards = Object.values(AWARDS).filter(award => 
+      !userVotes.map(v => v.award).includes(award) && award !== currentAward
+    );
+
+    if (remainingAwards.length > 0) {
+      // Go to next award
+      setCurrentAward(remainingAwards[0]);
+      setRankings([]);
+    } else {
+      // All awards completed, show feedback
+      setShowFeedback(true);
+    }
+  };
+
+  const goToPreviousAward = () => {
+    if (!currentAward) return;
+    
+    const votedAwards = userVotes.map(v => v.award);
+    const currentIndex = Object.values(AWARDS).indexOf(currentAward);
+    
+    if (currentIndex > 0) {
+      const previousAward = Object.values(AWARDS)[currentIndex - 1];
+      setCurrentAward(previousAward);
+      setRankings([]);
+    }
+  };
+
+  const goToNextAward = () => {
+    if (!currentAward) return;
+    
+    const votedAwards = userVotes.map(v => v.award);
+    const currentIndex = Object.values(AWARDS).indexOf(currentAward);
+    
+    if (currentIndex < Object.values(AWARDS).length - 1) {
+      const nextAward = Object.values(AWARDS)[currentIndex + 1];
+      setCurrentAward(nextAward);
+      setRankings([]);
+    }
+  };
+
+  // Enhanced feedback functions
+  const submitFeedbackForPlayer = (player: string) => {
+    const playerFeedback = feedbackState[player];
+    if (!playerFeedback?.strength || !playerFeedback?.improvement || !playerFeedback?.growth) {
+      alert("Please fill out all feedback fields for this player.");
+      return;
+    }
+
+    db.transact(
+      db.tx.feedback[id()].update({
+        voterName: selectedPlayer,
+        targetPlayer: player,
+        strength: playerFeedback.strength,
+        improvement: playerFeedback.improvement,
+        growth: playerFeedback.growth,
+        timestamp: Date.now(),
+      })
+    );
+
+    const newFeedbackState = { ...feedbackState };
+    delete newFeedbackState[player];
+    setFeedbackState(newFeedbackState);
+  };
+
+  const skipFeedbackForPlayer = (player: string) => {
+    const newFeedbackState = { ...feedbackState };
+    delete newFeedbackState[player];
+    setFeedbackState(newFeedbackState);
+  };
+
+  const editFeedbackForPlayer = (player: string) => {
+    const existingFeedback = feedback.find(f => f.voterName === selectedPlayer && f.targetPlayer === player);
+    if (existingFeedback) {
+      setFeedbackState({
+        ...feedbackState,
+        [player]: {
+          strength: existingFeedback.strength,
+          improvement: existingFeedback.improvement,
+          growth: existingFeedback.growth
+        }
+      });
+    }
+  };
+
+  const submitAllFeedback = () => {
+    Object.keys(feedbackState).forEach(player => {
+      const playerFeedback = feedbackState[player];
+      if (playerFeedback?.strength && playerFeedback?.improvement && playerFeedback?.growth) {
+        db.transact(
+          db.tx.feedback[id()].update({
+            voterName: selectedPlayer,
+            targetPlayer: player,
+            strength: playerFeedback.strength,
+            improvement: playerFeedback.improvement,
+            growth: playerFeedback.growth,
+            timestamp: Date.now(),
+          })
+        );
+      }
+    });
+    setFeedbackState({});
+  };
+
+  const skipAllFeedback = () => {
+    setFeedbackState({});
+  };
+
+  const completeFeedbackAndShowResults = () => {
+    setShowFeedback(false);
+    setShowResults(true);
+  };
+
+  const handleAdminLogin = () => {
+    console.log("Admin login attempt:", { adminPassword, isCorrect: adminPassword === "admin123" });
+    
+    if (adminPassword === "admin123") {
+      console.log("Password correct, setting admin state...");
+      setIsAdmin(true);
+      setShowAdminLogin(false);
+      setShowAdminPanel(true); // Show the admin panel
+      setAdminPassword("");
+      console.log("Admin state updated, should show admin panel");
+    } else {
+      console.log("Password incorrect, showing alert");
+      alert("Incorrect password");
+    }
+  };
+
+  const handleAdminKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAdminLogin();
+    }
+  };
+
+  useEffect(() => {
+    if (feedback && feedback.length === 0 && isAdmin) {
+      PREPOPULATED_FEEDBACK.forEach(feedbackItem => {
+        db.transact(
+          db.tx.feedback[id()].update({
+            voterName: "System",
+            targetPlayer: feedbackItem.targetPlayer,
+            strength: feedbackItem.strength,
+            improvement: feedbackItem.improvement,
+            growth: feedbackItem.growth,
+            timestamp: Date.now(),
+          })
+        );
+      });
+    }
+  }, [feedback, isAdmin]);
+
+  // If showing results, display only the results page
+  if (showResults) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-gray-900 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              🏆 2K25 Awards Results
+            </h1>
+            <p className="text-xl text-gray-600 mb-8">Final results for all awards</p>
+            <button
+              onClick={() => {
+                setShowResults(false);
+                setCurrentAward(AWARDS.MVP);
+                setRankings([]);
+              }}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              ← Back to Voting
+            </button>
+          </div>
+
+          {/* Awards Results Display */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {Object.values(AWARDS).map((award) => {
+              const awardVotes = votes.filter((vote: Vote) => vote.award === award);
+              if (awardVotes.length === 0) return null;
+
+              const scores = calculateBordaCount(awardVotes, award);
+              const sortedPlayers = Object.entries(scores)
+                .sort(([, a], [, b]) => b - a)
+                .filter(([, score]) => score > 0);
+
+              // Get top 3 winners
+              const top3 = sortedPlayers.slice(0, 3);
+              const otherPlayers = sortedPlayers.slice(3);
+
+              return (
+                <div key={award} className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-xl">
+                  <h3 className="text-2xl font-bold mb-4 text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    {award}
+                  </h3>
+                  
+                  {/* Top 3 Winners with Podium */}
+                  <div className="mb-6">
+                    <div className="flex items-end justify-center space-x-2 mb-4">
+                      {/* 2nd Place */}
+                      {top3[1] && (
+                        <div className="text-center">
+                          <div className="bg-gradient-to-br from-gray-400 to-gray-500 text-white text-lg font-bold px-4 py-3 rounded-t-xl border border-gray-300 shadow-lg">
+                            {top3[1][0]}
+                          </div>
+                          <div className="bg-gradient-to-br from-gray-500 to-gray-600 text-white text-sm px-4 py-2 rounded-b-xl border border-gray-400 shadow-md">
+                            {top3[1][1]} pts
+                          </div>
+                          <div className="text-2xl mt-2">🥈</div>
+                        </div>
+                      )}
+                      
+                      {/* 1st Place */}
+                      {top3[0] && (
+                        <div className="text-center">
+                          <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-white text-xl font-bold px-6 py-4 rounded-t-xl border border-yellow-300 shadow-xl">
+                            {top3[0][0]}
+                          </div>
+                          <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white text-base px-6 py-2 rounded-b-xl border border-yellow-400 shadow-lg">
+                            {top3[0][1]} pts
+                          </div>
+                          <div className="text-3xl mt-2">🥇</div>
+                        </div>
+                      )}
+                      
+                      {/* 3rd Place */}
+                      {top3[2] && (
+                        <div className="text-center">
+                          <div className="bg-gradient-to-br from-orange-400 to-orange-500 text-white text-lg font-bold px-4 py-3 rounded-t-xl border border-orange-300 shadow-lg">
+                            {top3[2][0]}
+                          </div>
+                          <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white text-sm px-4 py-2 rounded-b-xl border border-orange-400 shadow-md">
+                            {top3[2][1]} pts
+                          </div>
+                          <div className="text-2xl mt-2">🥉</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vote Count and Details Button */}
+                  <div className="text-center">
+                    <div className="text-sm text-gray-500 mb-3">
+                      {awardVotes.length} vote{awardVotes.length !== 1 ? 's' : ''}
+                    </div>
+                    <button
+                      onClick={() => {
+                        // Show detailed results modal
+                        setDetailedAward(award);
+                        setShowDetailedModal(true);
+                      }}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      📊 View All Results
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Teammate Feedback Display */}
+          <div className="mt-16">
+            <h2 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Teammate Feedback</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {PLAYERS.map((player) => {
+                const playerFeedback = feedback.filter(f => f.targetPlayer === player);
+                if (playerFeedback.length === 0) return null;
+                return (
+                  <div key={player} className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-xl">
+                    <h3 className="text-2xl font-semibold mb-4 text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                      {player}
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-lg font-medium text-green-600 mb-2">💪 Strengths</h4>
+                        <div className="space-y-2">
+                          {playerFeedback.map((f, index) => (
+                            <div key={index} className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/30 shadow-md">
+                              <p className="text-sm text-gray-500 mb-1">From: {f.voterName}</p>
+                              <p className="text-gray-800">{f.strength}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-medium text-yellow-600 mb-2">🔧 Areas for Improvement</h4>
+                        <div className="space-y-2">
+                          {playerFeedback.map((f, index) => (
+                            <div key={index} className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/30 shadow-md">
+                              <p className="text-sm text-gray-500 mb-1">From: {f.voterName}</p>
+                              <p className="text-gray-800">{f.improvement}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-medium text-blue-600 mb-2">🌱 Growth Suggestions</h4>
+                        <div className="space-y-2">
+                          {playerFeedback.map((f, index) => (
+                            <div key={index} className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/30 shadow-md">
+                              <p className="text-sm text-gray-500 mb-1">From: {f.voterName}</p>
+                              <p className="text-gray-800">{f.growth}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Detailed Results Modal */}
+        {showDetailedModal && detailedAward && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white/90 backdrop-blur-md border border-white/20 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  Detailed Results: {detailedAward}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDetailedModal(false);
+                    setDetailedAward(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-3xl transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Results Table */}
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Final Rankings</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="py-3 px-4 text-gray-600 font-semibold">Rank</th>
+                        <th className="py-3 px-4 text-gray-600 font-semibold">Player</th>
+                        <th className="py-3 px-4 text-gray-600 font-semibold">Points</th>
+                        <th className="py-3 px-4 text-gray-600 font-semibold">Votes Received</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {votes.filter((vote: Vote) => vote.award === detailedAward)
+                        .reduce((acc: any[], vote: Vote) => {
+                          const rankings = vote.rankings.split(',').map(p => p.trim());
+                          rankings.forEach((player, index) => {
+                            const existing = acc.find(p => p.player === player);
+                            if (existing) {
+                              existing.points += PLAYERS.length - index;
+                              existing.votes.push({ voter: vote.voterName, rank: index + 1 });
+                            } else {
+                              acc.push({
+                                player,
+                                points: PLAYERS.length - index,
+                                votes: [{ voter: vote.voterName, rank: index + 1 }]
+                              });
+                            }
+                          });
+                          return acc;
+                        }, [])
+                        .sort((a, b) => b.points - a.points)
+                        .map((result, index) => (
+                          <tr key={result.player} className="border-b border-gray-200 hover:bg-gray-50/50">
+                            <td className="py-3 px-4">
+                              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+                                index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' :
+                                index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white' :
+                                index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white' :
+                                'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-700'
+                              }`}>
+                                {index + 1}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-medium text-gray-800">{result.player}</td>
+                            <td className="py-3 px-4 text-blue-600 font-semibold">{result.points}</td>
+                            <td className="py-3 px-4 text-gray-600">
+                              {result.votes.length} vote{result.votes.length !== 1 ? 's' : ''}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Individual Vote Breakdown */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4 text-gray-800">Individual Votes</h3>
+                <div className="space-y-3">
+                  {votes.filter((vote: Vote) => vote.award === detailedAward).map((vote: Vote, index) => {
+                    const rankings = vote.rankings.split(',').map(p => p.trim());
+                    return (
+                      <div key={index} className="bg-white/60 backdrop-blur-sm p-4 rounded-xl border border-white/30 shadow-md">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-gray-500">Voter: <span className="text-gray-800 font-medium">{vote.voterName}</span></span>
+                          <span className="text-xs text-gray-400">{new Date(vote.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {rankings.map((player, rankIndex) => (
+                            <div key={rankIndex} className="flex items-center space-x-2 bg-gray-100 px-3 py-1 rounded-full">
+                              <span className="text-purple-600 font-bold text-sm">#{rankIndex + 1}</span>
+                              <span className="text-gray-700 text-sm">{player}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // If showing feedback, display only the feedback interface
+  if (showFeedback) {
+    return (
+      <div className="min-h-screen bg-black text-white p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              🎯 Teammate Feedback
+            </h1>
+            <p className="text-xl text-gray-400 mb-6">Share constructive feedback to help everyone grow (optional)</p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => {
+                  setShowFeedback(false);
+                  setCurrentAward(AWARDS.MVP);
+                  setRankings([]);
+                }}
+                className="bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-gray-700 active:scale-95 text-lg"
+              >
+                ← Back to Awards
+              </button>
+              <button
+                onClick={completeFeedbackAndShowResults}
+                className="bg-purple-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-purple-700 active:scale-95 text-lg"
+              >
+                🏆 View Final Results
+              </button>
+            </div>
+          </div>
+
+          {/* Feedback Dashboard */}
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-8">
+            {/* Feedback Progress */}
+            <div className="text-center mb-6">
+              <div className="text-lg text-gray-300 mb-3">
+                Feedback Progress: {feedback.filter(f => f.voterName === selectedPlayer).length} of {PLAYERS.filter(p => p !== selectedPlayer).length} teammates
+              </div>
+              <div className="w-full bg-gray-800 rounded-full h-3">
+                <div
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${(feedback.filter(f => f.voterName === selectedPlayer).length / PLAYERS.filter(p => p !== selectedPlayer).length) * 100}%`
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Feedback Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {PLAYERS.filter(p => p !== selectedPlayer).map((player) => {
+                const existingFeedback = feedback.find(f => f.voterName === selectedPlayer && f.targetPlayer === player);
+                const hasFeedback = !!existingFeedback;
+
+                return (
+                  <div key={player} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                    <div className="text-center mb-4">
+                      <h4 className="text-lg font-semibold text-white mb-2">{player}</h4>
+                      {hasFeedback ? (
+                        <span className="text-green-400 text-sm">✓ Feedback Given</span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No feedback yet</span>
+                      )}
+                    </div>
+
+                    {!hasFeedback && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-green-400">
+                            💪 Strength:
+                          </label>
+                          <textarea
+                            placeholder="What they do well..."
+                            className="w-full p-2 bg-black border border-gray-700 rounded text-white text-sm focus:border-green-500 focus:outline-none transition-colors"
+                            rows={2}
+                            onChange={(e) => {
+                              const newFeedback = { ...feedbackState[player], strength: e.target.value };
+                              setFeedbackState({ ...feedbackState, [player]: newFeedback });
+                            }}
+                            value={feedbackState[player]?.strength || ""}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-yellow-400">
+                            🔧 Improvement:
+                          </label>
+                          <textarea
+                            placeholder="Areas to work on..."
+                            className="w-full p-2 bg-black border border-gray-700 rounded text-white text-sm focus:border-yellow-500 focus:outline-none transition-colors"
+                            rows={2}
+                            onChange={(e) => {
+                              const newFeedback = { ...feedbackState[player], improvement: e.target.value };
+                              setFeedbackState({ ...feedbackState, [player]: newFeedback });
+                            }}
+                            value={feedbackState[player]?.improvement || ""}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-blue-400">
+                            🌱 Growth:
+                          </label>
+                          <textarea
+                            placeholder="Development suggestions..."
+                            className="w-full p-2 bg-black border border-gray-700 rounded text-white text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                            rows={2}
+                            onChange={(e) => {
+                              const newFeedback = { ...feedbackState[player], growth: e.target.value };
+                              setFeedbackState({ ...feedbackState, [player]: newFeedback });
+                            }}
+                            value={feedbackState[player]?.growth || ""}
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => submitFeedbackForPlayer(player)}
+                            disabled={!feedbackState[player]?.strength || !feedbackState[player]?.improvement || !feedbackState[player]?.growth}
+                            className="flex-1 bg-green-600 text-white text-sm font-medium py-2 px-3 rounded transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
+                          >
+                            Submit
+                          </button>
+                          <button
+                            onClick={() => skipFeedbackForPlayer(player)}
+                            className="bg-gray-600 text-white text-sm font-medium py-2 px-3 rounded transition-all duration-200 hover:bg-gray-700 active:scale-95"
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {hasFeedback && (
+                      <div className="space-y-2">
+                        <div className="text-xs text-gray-400">
+                          <div className="font-medium text-green-400 mb-1">💪 Strength:</div>
+                          <div className="text-white">{existingFeedback.strength}</div>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <div className="font-medium text-yellow-400 mb-1">🔧 Improvement:</div>
+                          <div className="text-white">{existingFeedback.improvement}</div>
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <div className="font-medium text-blue-400 mb-1">🌱 Growth:</div>
+                          <div className="text-white">{existingFeedback.growth}</div>
+                        </div>
+                        <button
+                          onClick={() => editFeedbackForPlayer(player)}
+                          className="w-full bg-blue-600 text-white text-sm font-medium py-2 px-3 rounded transition-all duration-200 hover:bg-blue-700 active:scale-95 mt-3"
+                        >
+                          Edit Feedback
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bulk Actions */}
+            <div className="mt-8 text-center space-x-4">
+              <button
+                onClick={submitAllFeedback}
+                disabled={Object.keys(feedbackState).length === 0}
+                className="bg-green-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
+              >
+                📝 Submit All Feedback
+              </button>
+              <button
+                onClick={skipAllFeedback}
+                className="bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-gray-700 active:scale-95"
+              >
+                ⏭️ Skip All Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-gray-900 p-4">
+      {/* Header */}
+      <div className="max-w-7xl mx-auto mb-8">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-pink-400 via-orange-400 to-purple-500 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-xl">🏀</span>
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              2K25 Awards
+            </h1>
+          </div>
+          <button
+            onClick={() => isAdmin ? setShowAdminPanel(true) : setShowAdminLogin(true)}
+            className="bg-white/80 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-xl hover:bg-white/90 transition-all duration-200 border border-white/20 shadow-lg"
+          >
+            {isAdmin ? "Admin Panel" : "Admin"}
+          </button>
+        </div>
+
+        {/* Overall Voting Progress */}
+        {selectedPlayer && (
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-8 mb-6 shadow-xl">
+            <div className="text-center mb-4">
+              <h2 className="text-2xl font-semibold mb-2 text-gray-900">
+                Voting Progress for {selectedPlayer}
+              </h2>
+              <div className="text-lg text-gray-600 mb-3">
+                {votingProgress} of {totalAwards} awards completed
+                {isVotingComplete && (
+                  <span className="text-green-600 ml-2 font-semibold">✓ All Done!</span>
+                )}
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-3 rounded-full transition-all duration-500 ${
+                    isVotingComplete 
+                      ? 'bg-gradient-to-r from-green-400 to-emerald-500' 
+                      : 'bg-gradient-to-r from-blue-500 to-purple-600'
+                  }`}
+                  style={{ width: `${Math.min((votingProgress / totalAwards) * 100, 100)}%` }}
+                ></div>
+              </div>
+              {isVotingComplete && (
+                <p className="text-green-600 text-sm mt-2 font-medium">
+                  🎉 You've completed all awards! Choose an option below.
+                </p>
+              )}
+            </div>
+            
+            {/* Browser Voting Status */}
+            {hasVotedInBrowser && (
+              <div className="mt-4 p-3 bg-blue-50/80 backdrop-blur-sm border border-blue-200/50 rounded-xl">
+                <div className="flex items-center justify-center space-x-2 text-blue-700">
+                  <span className="text-lg">🔒</span>
+                  <span className="text-sm font-medium">
+                    This browser is locked to {browserVoter} for voting integrity
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Duplicate Vote Warning */}
+            {userVotes.length > uniqueAwardsVoted.length && (
+              <div className="mt-4 p-3 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200/50 rounded-xl">
+                <div className="flex items-center justify-center space-x-2 text-yellow-700">
+                  <span className="text-lg">⚠️</span>
+                  <span className="text-sm font-medium">
+                    Duplicate votes detected: {userVotes.length} total votes for {uniqueAwardsVoted.length} unique awards
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Admin Login Modal */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white/90 backdrop-blur-md border border-white/20 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 text-center text-gray-900">Admin Login</h2>
+            <input
+              type="password"
+              placeholder="Enter admin password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              onKeyPress={handleAdminKeyPress}
+              className="w-full p-4 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-gray-900 mb-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={handleAdminLogin}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => setShowAdminLogin(false)}
+                className="flex-1 bg-gray-100 text-gray-700 font-medium py-4 px-6 rounded-xl hover:bg-gray-200 transition-all duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Panel */}
+      {showAdminPanel && (
+        <AdminPanel 
+          onClose={() => setShowAdminPanel(false)} 
+          votesData={votesData}
+          feedbackData={feedbackData}
+        />
+      )}
+
+      {/* Player Selection */}
+      {!selectedPlayer && !hasVotedInBrowser && (
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-semibold mb-8 text-gray-900">
+            Select Your Name
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {PLAYERS.map((player) => (
+              <button
+                key={player}
+                onClick={() => handlePlayerSelect(player)}
+                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 p-6 rounded-2xl text-xl font-medium transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20 shadow-lg hover:shadow-xl hover:-translate-y-1"
+              >
+                {player}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Browser Already Voted Warning */}
+      {!selectedPlayer && hasVotedInBrowser && browserVoter && (
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-8 mb-8 shadow-xl">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-3xl font-bold mb-4 text-gray-900">
+              Browser Already Used for Voting
+            </h2>
+            <p className="text-xl text-gray-600 mb-6">
+              This browser has already been used to vote for <span className="font-semibold text-blue-600">{browserVoter}</span>.
+            </p>
+            <p className="text-lg text-gray-500 mb-8">
+              To maintain voting integrity, each browser can only be used to vote for one person.
+            </p>
+            <div className="space-x-4">
+              <button
+                onClick={() => {
+                  setSelectedPlayer(browserVoter);
+                  setShowResults(true);
+                }}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-8 py-4 rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                🏆 View Results for {browserVoter}
+              </button>
+              <button
+                onClick={() => {
+                  // Clear browser voting restrictions
+                  localStorage.removeItem('2k25_awards_voter');
+                  localStorage.removeItem('2k25_awards_voted');
+                  setBrowserVoter(null);
+                  setHasVotedInBrowser(false);
+                }}
+                className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium px-8 py-4 rounded-xl transition-all duration-200 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                🔄 Clear Browser Data
+              </button>
+            </div>
+            <div className="mt-6 p-4 bg-blue-50/80 backdrop-blur-sm border border-blue-200/50 rounded-xl">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Clearing browser data will allow you to vote for a different person, 
+                but this should only be done if you're using a shared device or need to change your vote.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Award Selection */}
+      {selectedPlayer && !currentAward && !isVotingComplete && (
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-semibold mb-8 text-gray-900">
+            Select an Award to Vote On
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Object.values(AWARDS).map((award) => {
+              const hasVotedForAward = votes.some((vote: Vote) => 
+                vote.voterName === selectedPlayer && vote.award === award
+              );
+              return (
+                <button
+                  key={award}
+                  onClick={() => setCurrentAward(award)}
+                  disabled={hasVotedForAward}
+                  className={`p-4 rounded-2xl text-lg font-medium transition-all duration-200 transform hover:scale-105 active:scale-95 border shadow-lg hover:shadow-xl hover:-translate-y-1 ${
+                    hasVotedForAward
+                      ? 'bg-green-100 border-green-200 text-green-700 cursor-not-allowed shadow-md'
+                      : 'bg-white/80 backdrop-blur-sm hover:bg-white/90 border-white/20 hover:border-white/30'
+                  }`}
+                >
+                  {award}
+                  {hasVotedForAward && <div className="text-sm mt-1">✓ Voted</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Completed User Message */}
+      {selectedPlayer && isVotingComplete && !showResults && !showFeedback && (
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-8 mb-8 shadow-xl">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-3xl font-bold mb-4 text-gray-900">
+              Congratulations! You've Completed All Awards
+            </h2>
+            <p className="text-xl text-gray-600 mb-6">
+              You've successfully voted for all {totalAwards} award categories.
+            </p>
+            <div className="space-x-4">
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium px-8 py-4 rounded-xl transition-all duration-200 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                💬 Give Teammate Feedback
+              </button>
+              <button
+                onClick={() => setShowResults(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium px-8 py-4 rounded-xl transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                🏆 View Final Results
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ranking Interface */}
+      {currentAward && !isVotingComplete && (
+        <div className="max-w-7xl mx-auto mb-8">
+          {/* Current Award Header */}
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold mb-2 text-gray-900">
+              {currentAward}
+            </h2>
+            <p className="text-lg text-gray-600">Rank the available players for this award</p>
+          </div>
+
+          {/* Award Navigation */}
+          <div className="flex justify-between items-center mb-6">
+            <button
+              onClick={goToPreviousAward}
+              disabled={Object.values(AWARDS).indexOf(currentAward) === 0}
+              className="bg-white/80 backdrop-blur-sm text-gray-700 font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:bg-white/90 active:scale-95 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:hover:bg-gray-100 border border-white/20 shadow-lg"
+            >
+              ← Previous Award
+            </button>
+            <div className="text-center">
+              <div className="text-lg text-gray-700">
+                Award {Object.values(AWARDS).indexOf(currentAward) + 1} of {totalAwards}
+              </div>
+              <div className="text-sm text-gray-500">
+                {currentAward}
+              </div>
+            </div>
+            <button
+              onClick={goToNextAward}
+              disabled={Object.values(AWARDS).indexOf(currentAward) === totalAwards - 1}
+              className="bg-white/80 backdrop-blur-sm text-gray-700 font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:bg-white/90 active:scale-95 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:hover:bg-gray-100 border border-white/20 shadow-lg"
+            >
+              Next Award →
+            </button>
+          </div>
+
+          {/* Current Award Progress */}
+          <div className="mb-6 text-center">
+            <div className="text-lg text-gray-700 mb-2">
+              Current Award Progress: {rankings.length} of {availablePlayers.length} players ranked
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500"
+                style={{ width: `${(rankings.length / availablePlayers.length) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          <div className="flex gap-6 w-full">
+            {/* Card 1: Available Players */}
+            <div className="w-1/2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-xl">
+              <h4 className="text-xl font-semibold mb-4 text-center text-green-600">
+                Available ({availablePlayers.filter(p => !rankings.includes(p)).length})
+              </h4>
+              {availablePlayers.filter(p => !rankings.includes(p)).length === 0 ? (
+                <div className="text-green-600 text-center p-6 bg-green-50/50 border border-green-200/50 rounded-xl">
+                  <div className="text-3xl mb-2">🎉</div>
+                  <span className="text-lg">All ranked!</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availablePlayers
+                    .filter(player => !rankings.includes(player))
+                    .map((player) => (
+                      <button
+                        key={player}
+                        onClick={() => handleRankingChange(player, rankings.length)}
+                        className="w-full bg-white/60 backdrop-blur-sm hover:bg-white/80 p-3 rounded-xl text-left transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/30 hover:border-white/50 shadow-md hover:shadow-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-800">{player}</span>
+                          <span className="text-green-500 text-lg">→</span>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: Current Rankings */}
+            <div className="w-1/2 bg-white/80 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-xl">
+              <h4 className="text-xl font-semibold mb-4 text-center text-blue-600">
+                Rankings ({rankings.length}/{availablePlayers.length})
+              </h4>
+              {rankings.length === 0 ? (
+                <div className="text-gray-500 text-center p-6 bg-gray-50/50 border border-gray-200/50 rounded-xl">
+                  <div className="text-3xl mb-2">👆</div>
+                  <span className="text-lg">Start ranking</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {rankings.map((player, index) => (
+                    <div key={player} className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/30 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <span className="text-purple-600 font-bold text-lg w-6 text-center">
+                            {index + 1}
+                          </span>
+                          <span className="text-sm font-medium text-gray-800">{player}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const newRankings = rankings.filter(p => p !== player);
+                            setRankings(newRankings);
+                          }}
+                          className="text-gray-500 hover:text-red-500 px-2 py-1 text-xl font-bold transition-colors"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          {rankings.length === availablePlayers.length && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={submitVote}
+                className="bg-gradient-to-r from-gray-800 to-gray-900 text-white font-medium px-8 py-4 rounded-xl text-2xl transition-all duration-200 hover:from-gray-900 hover:to-black shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+              >
+                🏆 Submit Vote for {currentAward}
+              </button>
+            </div>
+          )}
+
+          {rankings.length > 0 && rankings.length < availablePlayers.length && (
+            <div className="w-full mt-6 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200/50 text-yellow-800 py-4 px-6 rounded-xl text-center text-lg font-medium shadow-lg">
+              ⚠️ Please rank all {availablePlayers.length} players before submitting
+            </div>
+          )}
+
+          {/* Mobile Gesture Instructions */}
+          <div className="mt-8 text-center text-gray-600">
+            <div className="flex items-center justify-center space-x-6 mb-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-green-500 text-xl">→</span>
+                <span>Tap to rank</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-red-500 text-xl">×</span>
+                <span>Tap to remove</span>
+              </div>
+            </div>
+            <p className="text-lg">Side-by-side layout for easy ranking on mobile! 📱</p>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Button */}
+      {selectedPlayer && (
+        <div className="text-center mt-8">
+          <button
+            onClick={() => {
+              setSelectedPlayer("");
+              setCurrentAward(null);
+              setRankings([]);
+              setShowResults(false);
+              setShowFeedback(false);
+              setFeedbackState({});
+              setShowDetailedModal(false);
+              setDetailedAward(null);
+              // Clear browser voting restrictions
+              localStorage.removeItem('2k25_awards_voter');
+              localStorage.removeItem('2k25_awards_voted');
+              setBrowserVoter(null);
+              setHasVotedInBrowser(false);
+            }}
+            className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          >
+            🔄 Reset & Choose Different Player
+          </button>
+        </div>
+      )}
     </div>
   );
 }
