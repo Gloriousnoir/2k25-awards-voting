@@ -117,8 +117,8 @@ export default function VotingApp() {
     
     if (rankings.length !== availablePlayers.length) {
       alert(`Please rank all ${availablePlayers.length} available players before submitting your vote.`);
-      return;
-    }
+    return;
+  }
     const uniqueRankings = [...new Set(rankings)];
     if (uniqueRankings.length !== rankings.length) {
       alert("You have duplicate players in your rankings. Please fix this before submitting.");
@@ -246,9 +246,9 @@ export default function VotingApp() {
             improvement: playerFeedback.improvement,
             growth: playerFeedback.growth,
             timestamp: Date.now(),
-          })
-        );
-      }
+    })
+  );
+}
     });
     setFeedbackState({});
   };
@@ -970,7 +970,7 @@ export default function VotingApp() {
 
   // Feedback page
   if (currentPage === 'feedback') {
-    return (
+  return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-gray-900 p-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
@@ -1121,8 +1121,8 @@ export default function VotingApp() {
                           Edit Feedback
                         </button>
                       </div>
-                    )}
-                  </div>
+            )}
+          </div>
                 );
               })}
             </div>
@@ -1136,30 +1136,30 @@ export default function VotingApp() {
               >
                 📝 Submit All Feedback
               </button>
-              <button
+          <button
                 onClick={skipAllFeedback}
                 className="bg-gray-600 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-gray-700 active:scale-95"
-              >
+          >
                 ⏭️ Skip All Feedback
-              </button>
+          </button>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
+    </div>
+  );
+}
 
   // Default fallback - should not reach here
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-gray-900 p-4">
       <div className="max-w-4xl mx-auto text-center">
         <h1 className="text-3xl font-bold mb-4">Something went wrong</h1>
-        <button
+      <button
           onClick={() => setCurrentPage('name-selection')}
           className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700"
-        >
+      >
           Go Back to Start
-        </button>
+      </button>
       </div>
     </div>
   );
