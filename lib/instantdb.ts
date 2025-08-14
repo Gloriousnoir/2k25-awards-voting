@@ -8,7 +8,7 @@ export const INSTANTDB_CONFIG = {
 
 // Player roster
 export const PLAYERS = [
-  "Cam", "Dope", "G", "Justin", "Kehlel", "Mandell", "Mark", "Ray", "Wes", "Will", "TestUser"
+  "Cam", "Dope", "G", "Justin", "Kehlel", "Mandell", "Mark", "Ray", "Wes", "Will"
 ] as const;
 
 export type Player = typeof PLAYERS[number];

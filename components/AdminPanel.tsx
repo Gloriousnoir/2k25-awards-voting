@@ -26,14 +26,14 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
       // This will be handled by the parent component's data
       setMessage("ℹ️ Creating test user... Please wait.");
       
-      // Create test votes for "TestUser" across all awards
+      // Create test votes for "TestVoter" across all awards
       const testVotes = Object.values(AWARDS).map(award => {
         // Create a simple ranking for each award (using all available players)
         const availablePlayers = PLAYERS;
         const rankings = availablePlayers.slice(0, 5).join(", "); // Top 5 players
         
         return db.tx.votes[id()].update({
-          voterName: "TestUser",
+          voterName: "TestVoter",
           award: award,
           rankings: rankings,
           timestamp: Date.now(),
@@ -43,7 +43,7 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
       // Create test feedback
       const testFeedback = PLAYERS.map(player => {
         return db.tx.feedback[id()].update({
-          voterName: "TestUser",
+          voterName: "TestVoter",
           targetPlayer: player,
           strength: `Test feedback strength for ${player}`,
           improvement: `Test feedback improvement for ${player}`,
@@ -55,7 +55,7 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
       // Execute all transactions
       await db.transact([...testVotes, ...testFeedback]);
       
-      setMessage("✅ Test user 'TestUser' created successfully with votes for all awards and feedback for all teammates!");
+      setMessage("✅ Test user 'TestVoter' created successfully with votes for all awards and feedback for all teammates!");
     } catch (error) {
       console.error("Error creating test user:", error);
       setMessage("❌ Error creating test user. Please try again.");
@@ -134,27 +134,27 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
         return;
       }
 
-      const testUserVotes = votesData.votes.filter((v: any) => v.voterName === "TestUser");
-      const testUserFeedback = feedbackData?.feedback?.filter((f: any) => f.voterName === "TestUser") || [];
+      const testUserVotes = votesData.votes.filter((v: any) => v.voterName === "TestVoter");
+      const testUserFeedback = feedbackData?.feedback?.filter((f: any) => f.voterName === "TestVoter") || [];
 
       if (testUserVotes.length === 0 && testUserFeedback.length === 0) {
-        setMessage("✅ No TestUser data found to delete.");
+        setMessage("✅ No TestVoter data found to delete.");
         return;
       }
 
-      setMessage(`🗑️ Found ${testUserVotes.length} votes and ${testUserFeedback.length} feedback items for TestUser.`);
+      setMessage(`🗑️ Found ${testUserVotes.length} votes and ${testUserFeedback.length} feedback items for TestVoter.`);
       
       // Log the data for manual deletion
-      console.log("TestUser votes to delete:", testUserVotes);
-      console.log("TestUser feedback to delete:", testUserFeedback);
+      console.log("TestVoter votes to delete:", testUserVotes);
+      console.log("TestVoter feedback to delete:", testUserFeedback);
       
       // Note: InstantDB doesn't support bulk delete, so we'll need to delete individually
       // For now, just show the data that needs to be deleted
-      setMessage(`⚠️ Found ${testUserVotes.length} TestUser votes and ${testUserFeedback.length} feedback items. Check console for details. Manual deletion required.`);
+      setMessage(`⚠️ Found ${testUserVotes.length} TestVoter votes and ${testUserFeedback.length} feedback items. Check console for details. Manual deletion required.`);
       
     } catch (error) {
-      console.error("Error checking TestUser data:", error);
-      setMessage("❌ Error checking TestUser data. Please try again.");
+      console.error("Error checking TestVoter data:", error);
+      setMessage("❌ Error checking TestVoter data. Please try again.");
     } finally {
       setIsCleaning(false);
     }
@@ -221,8 +221,8 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
 
             {/* Delete TestUser Data */}
             <div className="mb-6">
-              <h4 className="text-lg font-medium mb-3 text-gray-200">Delete TestUser Data</h4>
-              <p className="text-sm text-gray-400 mb-3">Remove all TestUser votes and feedback to clean up test data.</p>
+              <h4 className="text-lg font-medium mb-3 text-gray-200">Delete TestVoter Data</h4>
+              <p className="text-sm text-gray-400 mb-3">Remove all TestVoter votes and feedback to clean up test data.</p>
               <button
                 onClick={deleteTestUserVotes}
                 disabled={isCleaning}
@@ -238,10 +238,10 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
               <p className="text-sm text-gray-400 mb-3">Check the current status of test data.</p>
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
                 <div className="text-sm text-gray-300 mb-2">
-                  <strong>TestUser Votes:</strong> {votesData?.votes?.filter((v: any) => v.voterName === "TestUser").length || 0}
+                  <strong>TestVoter Votes:</strong> {votesData?.votes?.filter((v: any) => v.voterName === "TestVoter").length || 0}
                 </div>
                 <div className="text-sm text-gray-300 mb-2">
-                  <strong>TestUser Feedback:</strong> {feedbackData?.feedback?.filter((f: any) => f.voterName === "TestUser").length || 0}
+                  <strong>TestVoter Feedback:</strong> {feedbackData?.feedback?.filter((f: any) => f.voterName === "TestVoter").length || 0}
                 </div>
                 <div className="text-sm text-gray-300 mb-2">
                   <strong>Total Awards:</strong> {Object.keys(AWARDS).length}
@@ -252,9 +252,9 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
                 <div className="text-sm text-gray-300 mb-2">
                   <strong>Total Feedback in System:</strong> {feedbackData?.feedback?.length || 0}
                 </div>
-                {votesData?.votes?.filter((v: any) => v.voterName === "TestUser").length > Object.keys(AWARDS).length && (
+                {votesData?.votes?.filter((v: any) => v.voterName === "TestVoter").length > Object.keys(AWARDS).length && (
                   <div className="text-yellow-400 text-sm mt-2 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded">
-                    ⚠️ Warning: TestUser has more votes than awards! This indicates duplicate data.
+                    ⚠️ Warning: TestVoter has more votes than awards! This indicates duplicate data.
                   </div>
                 )}
                 <details className="mt-3">
@@ -262,7 +262,7 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
                     📊 Show Detailed Vote Breakdown
                   </summary>
                   <div className="mt-2 text-xs text-gray-400 space-y-1">
-                    {votesData?.votes?.filter((v: any) => v.voterName === "TestUser").map((vote: any, index: number) => (
+                    {votesData?.votes?.filter((v: any) => v.voterName === "TestVoter").map((vote: any, index: number) => (
                       <div key={index} className="flex justify-between items-center p-2 bg-gray-700 rounded">
                         <span className="text-gray-300">{vote.award}</span>
                         <div className="text-right">
