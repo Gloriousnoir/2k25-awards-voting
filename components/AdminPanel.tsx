@@ -4,6 +4,7 @@ import { useState } from "react";
 import { db } from "../lib/instantdb";
 import { id } from "@instantdb/react";
 import { AWARDS, PLAYERS } from "../lib/instantdb";
+import { findDuplicateVotes, analyzeVoteDistribution, checkDataImportIssues } from "../lib/duplicate-checker";
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -81,8 +82,8 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
     }
   };
 
-  // Cleanup duplicate votes
-  const cleanupDuplicateVotes = async () => {
+  // Enhanced duplicate vote analysis
+  const analyzeVotes = async () => {
     setIsCleaning(true);
     setMessage("");
     
@@ -92,32 +93,58 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
         return;
       }
 
-      // Find duplicate votes (same voter + same award)
-      const duplicateVotes: any[] = [];
-      const seen = new Set();
+      const votes = votesData.votes;
       
-      votesData.votes.forEach((vote: any) => {
-        const key = `${vote.voterName}-${vote.award}`;
-        if (seen.has(key)) {
-          duplicateVotes.push(vote);
-        } else {
-          seen.add(key);
-        }
-      });
-
-      if (duplicateVotes.length === 0) {
-        setMessage("✅ No duplicate votes found!");
-        return;
+      // Check for duplicates
+      const duplicateAnalysis = findDuplicateVotes(votes);
+      
+      // Analyze vote distribution
+      const distributionAnalysis = analyzeVoteDistribution(votes);
+      
+      // Check for data import issues
+      const importIssues = checkDataImportIssues(votes);
+      
+      // Create comprehensive report
+      let report = "🔍 COMPREHENSIVE VOTE ANALYSIS\n\n";
+      
+      // Duplicate summary
+      report += `📊 DUPLICATE VOTES:\n`;
+      report += duplicateAnalysis.summary + "\n";
+      
+      // Distribution summary
+      report += `📈 VOTE DISTRIBUTION:\n`;
+      report += distributionAnalysis.summary + "\n";
+      
+      // Import issues
+      if (importIssues.issues.length > 0) {
+        report += `⚠️ DATA IMPORT ISSUES:\n`;
+        importIssues.issues.forEach(issue => {
+          report += `• ${issue}\n`;
+        });
+        report += "\n";
+        
+        report += `💡 RECOMMENDATIONS:\n`;
+        importIssues.recommendations.forEach(rec => {
+          report += `• ${rec}\n`;
+        });
+      } else {
+        report += `✅ No data import issues detected\n`;
       }
-
-      setMessage(`⚠️ Found ${duplicateVotes.length} duplicate votes. Manual cleanup required.`);
       
-      // Log duplicate votes for manual removal
-      console.log("Duplicate votes found:", duplicateVotes);
+      // Log full report to console
+      console.log("=== COMPREHENSIVE VOTE ANALYSIS ===");
+      console.log(report);
+      
+      // Show summary in UI
+      if (duplicateAnalysis.duplicateCount > 0) {
+        setMessage(`⚠️ Found ${duplicateAnalysis.duplicateCount} duplicate votes. Check console for full analysis.`);
+      } else {
+        setMessage(`✅ No duplicates found. Check console for full analysis.`);
+      }
       
     } catch (error) {
-      console.error("Error checking for duplicate votes:", error);
-      setMessage("❌ Error checking for duplicate votes. Please try again.");
+      console.error("Error analyzing votes:", error);
+      setMessage("❌ Error analyzing votes. Please try again.");
     } finally {
       setIsCleaning(false);
     }
@@ -211,11 +238,11 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
               <h4 className="text-lg font-medium mb-3 text-gray-200">Check for Duplicate Votes</h4>
               <p className="text-sm text-gray-400 mb-3">Identify duplicate votes that may be causing progress issues.</p>
               <button
-                onClick={cleanupDuplicateVotes}
+                onClick={analyzeVotes}
                 disabled={isCleaning}
                 className="bg-yellow-600 text-white font-medium py-3 px-6 rounded-lg text-lg transition-all duration-200 hover:bg-yellow-700 active:scale-95 disabled:bg-yellow-700 disabled:cursor-not-allowed disabled:hover:bg-yellow-700"
               >
-                {isCleaning ? "Checking..." : "🔍 Check for Duplicates"}
+                {isCleaning ? "Analyzing..." : "🔍 Analyze Votes & Check Duplicates"}
               </button>
             </div>
 

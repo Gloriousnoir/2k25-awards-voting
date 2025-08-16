@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { db, room, PLAYERS, AWARDS, getAvailablePlayers, calculateBordaCount, rankingsToString, stringToRankings, PREPOPULATED_FEEDBACK, type Vote, type Award, type Feedback } from "../lib/instantdb";
 import { id } from "@instantdb/react";
 import AdminPanel from "../components/AdminPanel";
+import { findDuplicateVotes } from "../lib/duplicate-checker";
 
 export default function VotingApp() {
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
@@ -355,12 +356,30 @@ export default function VotingApp() {
                 2K25 Awards
               </h1>
             </div>
-            <button
-              onClick={() => setShowAdminLogin(true)}
-              className="bg-white/80 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-xl hover:bg-white/90 transition-all duration-200 border border-white/20 shadow-lg"
-            >
-              Admin
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowAdminLogin(true)}
+                className="bg-white/80 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-xl hover:bg-white/90 transition-all duration-200 border border-white/20 shadow-lg"
+              >
+                Admin
+              </button>
+              <button
+                onClick={() => {
+                  // Quick duplicate check
+                  const duplicateAnalysis = findDuplicateVotes(votes);
+                  if (duplicateAnalysis.duplicateCount > 0) {
+                    alert(`Found ${duplicateAnalysis.duplicateCount} duplicate votes! Check console for details.`);
+                    console.log("=== QUICK DUPLICATE CHECK ===");
+                    console.log(duplicateAnalysis.summary);
+                  } else {
+                    alert("No duplicate votes found!");
+                  }
+                }}
+                className="bg-yellow-500/80 backdrop-blur-sm text-white px-6 py-3 rounded-xl hover:bg-yellow-600/90 transition-all duration-200 border border-yellow-400/20 shadow-lg"
+              >
+                🔍 Check Duplicates
+              </button>
+            </div>
           </div>
 
           {/* Player Selection */}
