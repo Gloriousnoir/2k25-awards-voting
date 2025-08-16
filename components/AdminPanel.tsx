@@ -5,6 +5,7 @@ import { db } from "../lib/instantdb";
 import { id } from "@instantdb/react";
 import { AWARDS, PLAYERS } from "../lib/instantdb";
 import { findDuplicateVotes, analyzeVoteDistribution, checkDataImportIssues } from "../lib/duplicate-checker";
+import { deepVoteAnalysis, checkVoteCountingLogic } from "../lib/vote-analyzer";
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -243,6 +244,50 @@ export default function AdminPanel({ onClose, votesData, feedbackData }: AdminPa
                 className="bg-yellow-600 text-white font-medium py-3 px-6 rounded-lg text-lg transition-all duration-200 hover:bg-yellow-700 active:scale-95 disabled:bg-yellow-700 disabled:cursor-not-allowed disabled:hover:bg-yellow-700"
               >
                 {isCleaning ? "Analyzing..." : "🔍 Analyze Votes & Check Duplicates"}
+              </button>
+              
+              <button
+                onClick={async () => {
+                  setIsCleaning(true);
+                  setMessage("");
+                  
+                  try {
+                    if (!votesData?.votes) {
+                      setMessage("❌ No votes data available.");
+                      return;
+                    }
+                    
+                    const votes = votesData.votes;
+                    
+                    // Deep vote analysis
+                    const deepAnalysis = deepVoteAnalysis(votes);
+                    const logicAnalysis = checkVoteCountingLogic(votes);
+                    
+                    // Log comprehensive analysis
+                    console.log("=== DEEP VOTE ANALYSIS ===");
+                    console.log(deepAnalysis.summary);
+                    console.log("\n=== DETAILED BREAKDOWN ===");
+                    console.log(deepAnalysis.detailedBreakdown);
+                    console.log("\n=== VOTE COUNTING LOGIC ===");
+                    console.log(logicAnalysis.analysis);
+                    
+                    if (logicAnalysis.possibleExplanations.length > 0) {
+                      setMessage(`🔍 Found ${logicAnalysis.possibleExplanations.length} possible explanations! Check console for deep analysis.`);
+                    } else {
+                      setMessage(`✅ Deep analysis complete. Check console for detailed breakdown.`);
+                    }
+                    
+                  } catch (error) {
+                    console.error("Error in deep analysis:", error);
+                    setMessage("❌ Error in deep analysis. Please try again.");
+                  } finally {
+                    setIsCleaning(false);
+                  }
+                }}
+                disabled={isCleaning}
+                className="bg-blue-600 text-white font-medium py-3 px-6 rounded-lg text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:bg-blue-700 disabled:cursor-not-allowed disabled:hover:bg-blue-700 mt-2"
+              >
+                {isCleaning ? "Analyzing..." : "🔬 Deep Vote Analysis"}
               </button>
             </div>
 
